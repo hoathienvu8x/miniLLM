@@ -6,8 +6,7 @@
 #include <string.h>
 #include <math.h>
 
-// 文件魔数，用于验证模型文件
-#define MODEL_MAGIC 0x4D4C4C4D  // "MLLM"
+#define MODEL_MAGIC 0x4D4C4C4D
 #define MODEL_VERSION 1
 
 GPTModel* model_create(ModelConfig config) {
@@ -21,14 +20,12 @@ GPTModel* model_create(ModelConfig config) {
 
   model->config = config;
 
-  // 创建 Embedding 层
   model->embedding = embedding_create(config.vocab_size, config.hidden_dim, config.max_seq_len);
   if (model->embedding == NULL) {
     free(model);
     return NULL;
   }
 
-  // 创建 Transformer 层
   model->layers = (TransformerBlock**)malloc(config.num_layers * sizeof(TransformerBlock*));
   if (model->layers == NULL) {
     embedding_free(model->embedding);
@@ -39,7 +36,7 @@ GPTModel* model_create(ModelConfig config) {
   for (int i = 0; i < config.num_layers; i++) {
     model->layers[i] = transformer_block_create(config.hidden_dim, config.num_heads, config.ffn_dim);
     if (model->layers[i] == NULL) {
-      // 清理已创建的层
+
       for (int j = 0; j < i; j++) {
         transformer_block_free(model->layers[j]);
       }
@@ -50,7 +47,6 @@ GPTModel* model_create(ModelConfig config) {
     }
   }
 
-  // 创建最终 LayerNorm
   model->final_ln = layernorm_create(config.hidden_dim, 1e-5f);
   if (model->final_ln == NULL) {
     for (int i = 0; i < config.num_layers; i++) {
@@ -62,7 +58,6 @@ GPTModel* model_create(ModelConfig config) {
     return NULL;
   }
 
-  // 创建 LM Head [hidden_dim, vocab_size]
   int lm_shape[] = {config.hidden_dim, config.vocab_size};
   model->lm_head = tensor_zeros(2, lm_shape);
   if (model->lm_head == NULL) {
@@ -109,18 +104,14 @@ GPTCache* model_cache_create(GPTModel* model, int seq_len) {
   int hidden_dim = model->config.hidden_dim;
   int vocab_size = model->config.vocab_size;
 
-  // 创建隐藏状态缓存
   int hidden_shape[] = {seq_len, hidden_dim};
   cache->hidden = tensor_zeros(2, hidden_shape);
 
-  // 创建 logits 缓存
   int logits_shape[] = {seq_len, vocab_size};
   cache->logits = tensor_zeros(2, logits_shape);
 
-  // 创建因果掩码
   cache->mask = create_causal_mask(seq_len);
 
-  // 创建每层的缓存
   cache->layer_caches = (TransformerCache**)malloc(cache->num_layers * sizeof(TransformerCache*));
   if (cache->layer_caches == NULL) {
     tensor_free(cache->hidden);
@@ -176,7 +167,6 @@ int model_cache_resize(GPTCache* cache, GPTModel* model, int new_seq_len) {
   int hidden_dim = model->config.hidden_dim;
   int vocab_size = model->config.vocab_size;
 
-  // 重新分配张量
   if (cache->hidden) tensor_free(cache->hidden);
   if (cache->logits) tensor_free(cache->logits);
   if (cache->mask) tensor_free(cache->mask);
@@ -188,7 +178,6 @@ int model_cache_resize(GPTCache* cache, GPTModel* model, int new_seq_len) {
   cache->logits = tensor_zeros(2, logits_shape);
   cache->mask = create_causal_mask(new_seq_len);
 
-  // 调整每层缓存
   for (int i = 0; i < cache->num_layers; i++) {
     transformer_cache_resize(cache->layer_caches[i], new_seq_len);
   }
@@ -201,19 +190,15 @@ int model_cache_resize(GPTCache* cache, GPTModel* model, int new_seq_len) {
 void model_init_random(GPTModel* model, float std) {
   if (model == NULL) return;
 
-  // 初始化 Embedding
   embedding_init_random(model->embedding, std);
   embedding_init_sinusoidal_position(model->embedding);
 
-  // 初始化每层 Transformer
   for (int i = 0; i < model->config.num_layers; i++) {
     transformer_block_init(model->layers[i], std);
   }
 
-  // 初始化最终 LayerNorm
   layernorm_init(model->final_ln);
 
-  // 初始化 LM Head
   for (int i = 0; i < model->lm_head->size; i++) {
     float u1 = (float)rand() / RAND_MAX;
     float u2 = (float)rand() / RAND_MAX;
@@ -235,12 +220,10 @@ void model_forward(
   int hidden_dim = model->config.hidden_dim;
   int vocab_size = model->config.vocab_size;
 
-  // 检查并调整缓存大小
   if (cache != NULL && cache->seq_len != seq_len) {
     model_cache_resize(cache, model, seq_len);
   }
 
-  // 获取工作张量
   Tensor* hidden;
   Tensor* mask;
   int need_free = 0;
@@ -255,11 +238,8 @@ void model_forward(
     need_free = 1;
   }
 
-  // Step 1: Embedding
   embedding_forward(model->embedding, input_ids, seq_len, hidden);
 
-  // Step 2: 通过所有 Transformer 层
-  // 创建临时输出张量
   int h_shape[] = {seq_len, hidden_dim};
   Tensor* layer_output = tensor_zeros(2, h_shape);
 
@@ -267,17 +247,13 @@ void model_forward(
     TransformerCache* layer_cache = (cache != NULL) ? cache->layer_caches[i] : NULL;
     transformer_block_forward(model->layers[i], hidden, mask, layer_cache, layer_output);
 
-    // 交换 hidden 和 layer_output
     Tensor* temp = hidden;
     hidden = layer_output;
     layer_output = temp;
   }
 
-  // 注意: 经过偶数次交换后，hidden 仍指向原始位置
-  // 经过奇数次交换后，需要复制回去
   if (model->config.num_layers % 2 == 1) {
-    // hidden 和 layer_output 已交换，hidden 现在指向 layer_output
-    // 需要将结果复制到 cache->hidden
+
     if (cache != NULL) {
       memcpy(cache->hidden->data, hidden->data, seq_len * hidden_dim * sizeof(float));
       hidden = cache->hidden;
@@ -286,13 +262,9 @@ void model_forward(
 
   tensor_free(layer_output);
 
-  // Step 3: 最终 LayerNorm
   Tensor* ln_out = tensor_zeros(2, h_shape);
   layernorm_forward(model->final_ln, hidden, ln_out);
 
-  // Step 4: LM Head (线性投影到词汇表)
-  // logits = ln_out @ lm_head
-  // [seq_len, hidden_dim] @ [hidden_dim, vocab_size] = [seq_len, vocab_size]
   for (int s = 0; s < seq_len; s++) {
     for (int v = 0; v < vocab_size; v++) {
       float sum = 0.0f;
@@ -336,51 +308,41 @@ int model_save(GPTModel* model, const char* path) {
       goto fail; \
     }
 
-  // 写入魔数和版本
   int magic = MODEL_MAGIC;
   int version = MODEL_VERSION;
   check_fwrite(&magic, sizeof(int), 1, f);
   check_fwrite(&version, sizeof(int), 1, f);
 
-  // 写入配置
   check_fwrite(&model->config, sizeof(ModelConfig), 1, f);
 
-  // 写入 Embedding
   check_fwrite(model->embedding->token_embedding->data,
        sizeof(float), model->embedding->token_embedding->size, f);
   check_fwrite(model->embedding->position_embedding->data,
        sizeof(float), model->embedding->position_embedding->size, f);
 
-  // 写入每层 Transformer
   for (int i = 0; i < model->config.num_layers; i++) {
     TransformerBlock* layer = model->layers[i];
 
-    // LayerNorm1
     check_fwrite(layer->ln1->gamma->data, sizeof(float), layer->ln1->gamma->size, f);
     check_fwrite(layer->ln1->beta->data, sizeof(float), layer->ln1->beta->size, f);
 
-    // Attention
     check_fwrite(layer->attn->W_q->data, sizeof(float), layer->attn->W_q->size, f);
     check_fwrite(layer->attn->W_k->data, sizeof(float), layer->attn->W_k->size, f);
     check_fwrite(layer->attn->W_v->data, sizeof(float), layer->attn->W_v->size, f);
     check_fwrite(layer->attn->W_o->data, sizeof(float), layer->attn->W_o->size, f);
 
-    // LayerNorm2
     check_fwrite(layer->ln2->gamma->data, sizeof(float), layer->ln2->gamma->size, f);
     check_fwrite(layer->ln2->beta->data, sizeof(float), layer->ln2->beta->size, f);
 
-    // FFN
     check_fwrite(layer->ffn->W1->data, sizeof(float), layer->ffn->W1->size, f);
     check_fwrite(layer->ffn->b1->data, sizeof(float), layer->ffn->b1->size, f);
     check_fwrite(layer->ffn->W2->data, sizeof(float), layer->ffn->W2->size, f);
     check_fwrite(layer->ffn->b2->data, sizeof(float), layer->ffn->b2->size, f);
   }
 
-  // 写入最终 LayerNorm
   check_fwrite(model->final_ln->gamma->data, sizeof(float), model->final_ln->gamma->size, f);
   check_fwrite(model->final_ln->beta->data, sizeof(float), model->final_ln->beta->size, f);
 
-  // 写入 LM Head
   check_fwrite(model->lm_head->data, sizeof(float), model->lm_head->size, f);
 
   fclose(f);
@@ -409,7 +371,6 @@ GPTModel* model_load(const char* path) {
       goto fail; \
     }
 
-  // 验证魔数和版本
   int magic, version;
   check_fread(&magic, sizeof(int), 1, f);
   check_fread(&version, sizeof(int), 1, f);
@@ -426,52 +387,42 @@ GPTModel* model_load(const char* path) {
     return NULL;
   }
 
-  // 读取配置
   check_fread(&config, sizeof(ModelConfig), 1, f);
 
-  // 创建模型
   model = model_create(config);
   if (model == NULL) {
     fclose(f);
     return NULL;
   }
 
-  // 读取 Embedding
   check_fread(model->embedding->token_embedding->data,
       sizeof(float), model->embedding->token_embedding->size, f);
   check_fread(model->embedding->position_embedding->data,
       sizeof(float), model->embedding->position_embedding->size, f);
 
-  // 读取每层 Transformer
   for (int i = 0; i < config.num_layers; i++) {
     TransformerBlock* layer = model->layers[i];
 
-    // LayerNorm1
     check_fread(layer->ln1->gamma->data, sizeof(float), layer->ln1->gamma->size, f);
     check_fread(layer->ln1->beta->data, sizeof(float), layer->ln1->beta->size, f);
 
-    // Attention
     check_fread(layer->attn->W_q->data, sizeof(float), layer->attn->W_q->size, f);
     check_fread(layer->attn->W_k->data, sizeof(float), layer->attn->W_k->size, f);
     check_fread(layer->attn->W_v->data, sizeof(float), layer->attn->W_v->size, f);
     check_fread(layer->attn->W_o->data, sizeof(float), layer->attn->W_o->size, f);
 
-    // LayerNorm2
     check_fread(layer->ln2->gamma->data, sizeof(float), layer->ln2->gamma->size, f);
     check_fread(layer->ln2->beta->data, sizeof(float), layer->ln2->beta->size, f);
 
-    // FFN
     check_fread(layer->ffn->W1->data, sizeof(float), layer->ffn->W1->size, f);
     check_fread(layer->ffn->b1->data, sizeof(float), layer->ffn->b1->size, f);
     check_fread(layer->ffn->W2->data, sizeof(float), layer->ffn->W2->size, f);
     check_fread(layer->ffn->b2->data, sizeof(float), layer->ffn->b2->size, f);
   }
 
-  // 读取最终 LayerNorm
   check_fread(model->final_ln->gamma->data, sizeof(float), model->final_ln->gamma->size, f);
   check_fread(model->final_ln->beta->data, sizeof(float), model->final_ln->beta->size, f);
 
-  // 读取 LM Head
   check_fread(model->lm_head->data, sizeof(float), model->lm_head->size, f);
 
   fclose(f);
@@ -488,18 +439,14 @@ int model_num_params(GPTModel* model) {
 
   int total = 0;
 
-  // Embedding
   total += embedding_num_params(model->embedding);
 
-  // Transformer 层
   for (int i = 0; i < model->config.num_layers; i++) {
     total += transformer_block_num_params(model->layers[i]);
   }
 
-  // 最终 LayerNorm
   total += layernorm_num_params(model->final_ln);
 
-  // LM Head
   total += model->lm_head->size;
 
   return total;
@@ -546,8 +493,6 @@ size_t model_memory_size(GPTModel* model) {
   return (size_t)model_num_params(model) * sizeof(float);
 }
 
-// ============ KV Cache 支持实现 ============
-
 KVCache* model_create_kv_cache(GPTModel* model) {
   if (model == NULL) return NULL;
 
@@ -571,15 +516,12 @@ void model_forward_prefill(
   int hidden_dim = model->config.hidden_dim;
   int vocab_size = model->config.vocab_size;
 
-  // 检查并调整缓存大小
   if (gpt_cache != NULL && gpt_cache->seq_len != seq_len) {
     model_cache_resize(gpt_cache, model, seq_len);
   }
 
-  // 清空 KV Cache
   kv_cache_clear(kv_cache);
 
-  // 获取工作张量
   Tensor* hidden;
   Tensor* mask;
   int need_free = 0;
@@ -594,10 +536,8 @@ void model_forward_prefill(
     need_free = 1;
   }
 
-  // Step 1: Embedding
   embedding_forward(model->embedding, input_ids, seq_len, hidden);
 
-  // Step 2: 通过所有 Transformer 层 (with KV Cache)
   int h_shape[] = {seq_len, hidden_dim};
   Tensor* layer_output = tensor_zeros(2, h_shape);
 
@@ -606,13 +546,11 @@ void model_forward_prefill(
     transformer_block_forward_prefill(model->layers[i], hidden, kv_cache, i,
                       mask, layer_cache, layer_output);
 
-    // 交换 hidden 和 layer_output
     Tensor* temp = hidden;
     hidden = layer_output;
     layer_output = temp;
   }
 
-  // 处理奇偶数层交换问题
   if (model->config.num_layers % 2 == 1) {
     if (gpt_cache != NULL) {
       memcpy(gpt_cache->hidden->data, hidden->data, seq_len * hidden_dim * sizeof(float));
@@ -622,14 +560,11 @@ void model_forward_prefill(
 
   tensor_free(layer_output);
 
-  // 更新 KV Cache 长度
   kv_cache_set_len(kv_cache, seq_len);
 
-  // Step 3: 最终 LayerNorm
   Tensor* ln_out = tensor_zeros(2, h_shape);
   layernorm_forward(model->final_ln, hidden, ln_out);
 
-  // Step 4: LM Head
   for (int s = 0; s < seq_len; s++) {
     for (int v = 0; v < vocab_size; v++) {
       float sum = 0.0f;
@@ -661,27 +596,21 @@ void model_forward_decode(
   int hidden_dim = model->config.hidden_dim;
   int vocab_size = model->config.vocab_size;
 
-  // 分配单 token 的张量
   int hidden_shape[] = {1, hidden_dim};
   Tensor* hidden = tensor_zeros(2, hidden_shape);
   Tensor* layer_output = tensor_zeros(2, hidden_shape);
 
-  // Step 1: Embedding (单个 token)
-  // 获取 token embedding
   for (int d = 0; d < hidden_dim; d++) {
     hidden->data[d] = model->embedding->token_embedding->data[token_id * hidden_dim + d];
   }
 
-  // 加上位置编码
   for (int d = 0; d < hidden_dim; d++) {
     hidden->data[d] += model->embedding->position_embedding->data[pos * hidden_dim + d];
   }
 
-  // Step 2: 通过所有 Transformer 层 (with KV Cache decode)
   for (int i = 0; i < model->config.num_layers; i++) {
     TransformerCache* layer_cache = (gpt_cache != NULL) ? gpt_cache->layer_caches[i] : NULL;
 
-    // 如果没有 layer_cache，创建临时的
     TransformerCache* temp_cache = NULL;
     if (layer_cache == NULL) {
       temp_cache = transformer_cache_create(1, hidden_dim,
@@ -697,17 +626,14 @@ void model_forward_decode(
       transformer_cache_free(temp_cache);
     }
 
-    // 交换 hidden 和 layer_output
     Tensor* temp = hidden;
     hidden = layer_output;
     layer_output = temp;
   }
 
-  // Step 3: 最终 LayerNorm
   Tensor* ln_out = tensor_zeros(2, hidden_shape);
   layernorm_forward(model->final_ln, hidden, ln_out);
 
-  // Step 4: LM Head (只计算一个位置的 logits)
   for (int v = 0; v < vocab_size; v++) {
     float sum = 0.0f;
     for (int h = 0; h < hidden_dim; h++) {

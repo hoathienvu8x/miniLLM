@@ -36,7 +36,6 @@ void layernorm_free(LayerNorm* ln) {
 void layernorm_init(LayerNorm* ln) {
   if (ln == NULL) return;
 
-  // gamma = 1, beta = 0
   for (int i = 0; i < ln->hidden_dim; i++) {
     ln->gamma->data[i] = 1.0f;
     ln->beta->data[i] = 0.0f;
@@ -49,15 +48,13 @@ void layernorm_forward(LayerNorm* ln, Tensor* input, Tensor* output) {
   int hidden_dim = ln->hidden_dim;
 
   if (input->ndim == 1) {
-    // 1D 输入: [hidden_dim]
-    // 计算均值
+
     float mean = 0.0f;
     for (int i = 0; i < hidden_dim; i++) {
       mean += input->data[i];
     }
     mean /= hidden_dim;
 
-    // 计算方差
     float var = 0.0f;
     for (int i = 0; i < hidden_dim; i++) {
       float diff = input->data[i] - mean;
@@ -65,27 +62,24 @@ void layernorm_forward(LayerNorm* ln, Tensor* input, Tensor* output) {
     }
     var /= hidden_dim;
 
-    // 归一化
     float inv_std = 1.0f / sqrtf(var + ln->eps);
     for (int i = 0; i < hidden_dim; i++) {
       float normalized = (input->data[i] - mean) * inv_std;
       output->data[i] = ln->gamma->data[i] * normalized + ln->beta->data[i];
     }
   } else if (input->ndim == 2) {
-    // 2D 输入: [seq_len, hidden_dim]
+
     int seq_len = input->shape[0];
 
     for (int s = 0; s < seq_len; s++) {
       int offset = s * hidden_dim;
 
-      // 计算均值
       float mean = 0.0f;
       for (int i = 0; i < hidden_dim; i++) {
         mean += input->data[offset + i];
       }
       mean /= hidden_dim;
 
-      // 计算方差
       float var = 0.0f;
       for (int i = 0; i < hidden_dim; i++) {
         float diff = input->data[offset + i] - mean;
@@ -93,7 +87,6 @@ void layernorm_forward(LayerNorm* ln, Tensor* input, Tensor* output) {
       }
       var /= hidden_dim;
 
-      // 归一化
       float inv_std = 1.0f / sqrtf(var + ln->eps);
       for (int i = 0; i < hidden_dim; i++) {
         float normalized = (input->data[offset + i] - mean) * inv_std;
@@ -121,5 +114,5 @@ void layernorm_print_info(LayerNorm* ln) {
 
 int layernorm_num_params(LayerNorm* ln) {
   if (ln == NULL) return 0;
-  return 2 * ln->hidden_dim;  // gamma + beta
+  return 2 * ln->hidden_dim;
 }

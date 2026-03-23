@@ -18,7 +18,6 @@ TransformerBlock* transformer_block_create(int hidden_dim, int num_heads, int ff
   block->num_heads = num_heads;
   block->ffn_dim = ffn_dim;
 
-  // 创建各组件
   block->ln1 = layernorm_create(hidden_dim, 1e-5f);
   block->attn = attention_create(hidden_dim, num_heads);
   block->ln2 = layernorm_create(hidden_dim, 1e-5f);
@@ -87,7 +86,6 @@ int transformer_cache_resize(TransformerCache* cache, int new_seq_len) {
 
   int hidden_dim = cache->hidden_dim;
 
-  // 重新分配张量
   if (cache->ln1_out) tensor_free(cache->ln1_out);
   if (cache->attn_out) tensor_free(cache->attn_out);
   if (cache->ln2_out) tensor_free(cache->ln2_out);
@@ -99,7 +97,6 @@ int transformer_cache_resize(TransformerCache* cache, int new_seq_len) {
   cache->ln2_out = tensor_zeros(2, shape);
   cache->ffn_out = tensor_zeros(2, shape);
 
-  // 调整子缓存
   attention_cache_resize(cache->attn_cache, new_seq_len);
   ffn_cache_resize(cache->ffn_cache, new_seq_len);
 
@@ -134,12 +131,10 @@ void transformer_block_forward(
   int seq_len = input->shape[0];
   int hidden_dim = block->hidden_dim;
 
-  // 检查并调整缓存大小
   if (cache != NULL && cache->seq_len != seq_len) {
     transformer_cache_resize(cache, seq_len);
   }
 
-  // 分配临时张量 (如果没有缓存)
   Tensor *ln1_out, *attn_out, *ln2_out, *ffn_out;
   AttentionCache* attn_cache;
   FFNCache* ffn_cache;
@@ -163,28 +158,18 @@ void transformer_block_forward(
     need_free = 1;
   }
 
-  // Pre-LN Transformer Block:
-  // x = x + Attention(LayerNorm(x))
-  // x = x + FFN(LayerNorm(x))
-
-  // Step 1: ln1_out = LayerNorm(input)
   layernorm_forward(block->ln1, input, ln1_out);
 
-  // Step 2: attn_out = Attention(ln1_out)
   attention_forward(block->attn, ln1_out, mask, attn_cache, attn_out);
 
-  // Step 3: residual1 = input + attn_out (存到 output 作为中间结果)
   for (int i = 0; i < input->size; i++) {
     output->data[i] = input->data[i] + attn_out->data[i];
   }
 
-  // Step 4: ln2_out = LayerNorm(residual1)
   layernorm_forward(block->ln2, output, ln2_out);
 
-  // Step 5: ffn_out = FFN(ln2_out)
   ffn_forward(block->ffn, ln2_out, ffn_cache, ffn_out);
 
-  // Step 6: output = residual1 + ffn_out
   for (int i = 0; i < output->size; i++) {
     output->data[i] = output->data[i] + ffn_out->data[i];
   }
@@ -229,8 +214,6 @@ int transformer_block_num_params(TransformerBlock* block) {
   return ln1_params + attn_params + ln2_params + ffn_params;
 }
 
-// ============ KV Cache 支持实现 ============
-
 void transformer_block_forward_prefill(
   TransformerBlock* block,
   Tensor* input,
@@ -244,33 +227,24 @@ void transformer_block_forward_prefill(
     cache == NULL || output == NULL) return;
 
   int seq_len = input->shape[0];
-  // int hidden_dim = block->hidden_dim;
 
-  // 检查并调整缓存大小
   if (cache->seq_len != seq_len) {
     transformer_cache_resize(cache, seq_len);
   }
 
-  // Pre-LN Transformer Block with KV Cache:
-  // Step 1: ln1_out = LayerNorm(input)
   layernorm_forward(block->ln1, input, cache->ln1_out);
 
-  // Step 2: attn_out = Attention(ln1_out) with KV Cache
   attention_prefill_kv_cache(block->attn, cache->ln1_out, kv_cache, layer_idx,
                  mask, cache->attn_cache, cache->attn_out);
 
-  // Step 3: residual1 = input + attn_out
   for (int i = 0; i < input->size; i++) {
     output->data[i] = input->data[i] + cache->attn_out->data[i];
   }
 
-  // Step 4: ln2_out = LayerNorm(residual1)
   layernorm_forward(block->ln2, output, cache->ln2_out);
 
-  // Step 5: ffn_out = FFN(ln2_out)
   ffn_forward(block->ffn, cache->ln2_out, cache->ffn_cache, cache->ffn_out);
 
-  // Step 6: output = residual1 + ffn_out
   for (int i = 0; i < output->size; i++) {
     output->data[i] = output->data[i] + cache->ffn_out->data[i];
   }
@@ -288,46 +262,36 @@ void transformer_block_forward_decode(
   if (block == NULL || input == NULL || kv_cache == NULL ||
     cache == NULL || output == NULL) return;
 
-  int seq_len = input->shape[0];  // 通常为 1
+  int seq_len = input->shape[0];
   int hidden_dim = block->hidden_dim;
 
-  // 确保缓存足够大
   if (cache->seq_len < seq_len) {
     transformer_cache_resize(cache, seq_len);
   }
 
-  // 分配临时张量
   int shape[] = {seq_len, hidden_dim};
   Tensor* ln1_out = tensor_zeros(2, shape);
   Tensor* attn_out = tensor_zeros(2, shape);
   Tensor* ln2_out = tensor_zeros(2, shape);
   Tensor* ffn_out = tensor_zeros(2, shape);
 
-  // Pre-LN Transformer Block with KV Cache (Decode):
-  // Step 1: ln1_out = LayerNorm(input)
   layernorm_forward(block->ln1, input, ln1_out);
 
-  // Step 2: attn_out = Attention(ln1_out) with KV Cache
   attention_forward_kv_cache(block->attn, ln1_out, kv_cache, layer_idx,
                  pos, cache->attn_cache, attn_out);
 
-  // Step 3: residual1 = input + attn_out
   for (int i = 0; i < input->size; i++) {
     output->data[i] = input->data[i] + attn_out->data[i];
   }
 
-  // Step 4: ln2_out = LayerNorm(residual1)
   layernorm_forward(block->ln2, output, ln2_out);
 
-  // Step 5: ffn_out = FFN(ln2_out)
   ffn_forward(block->ffn, ln2_out, cache->ffn_cache, ffn_out);
 
-  // Step 6: output = residual1 + ffn_out
   for (int i = 0; i < output->size; i++) {
     output->data[i] = output->data[i] + ffn_out->data[i];
   }
 
-  // 清理临时张量
   tensor_free(ln1_out);
   tensor_free(attn_out);
   tensor_free(ln2_out);

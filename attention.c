@@ -22,7 +22,6 @@ MultiHeadAttention* attention_create(int hidden_dim, int num_heads) {
   attn->head_dim = hidden_dim / num_heads;
   attn->scale = 1.0f / sqrtf((float)attn->head_dim);
 
-  // 创建权重矩阵 [hidden_dim, hidden_dim]
   int shape[] = {hidden_dim, hidden_dim};
 
   attn->W_q = tensor_zeros(2, shape);
@@ -94,7 +93,6 @@ int attention_cache_resize(AttentionCache* cache, int new_seq_len) {
   if (cache == NULL) return -1;
   if (new_seq_len == cache->seq_len) return 0;
 
-  // 释放旧的
   if (cache->Q) tensor_free(cache->Q);
   if (cache->K) tensor_free(cache->K);
   if (cache->V) tensor_free(cache->V);
@@ -102,7 +100,6 @@ int attention_cache_resize(AttentionCache* cache, int new_seq_len) {
   if (cache->attn) tensor_free(cache->attn);
   if (cache->attn_out) tensor_free(cache->attn_out);
 
-  // 重新分配
   int qkv_shape[] = {new_seq_len, cache->hidden_dim};
   int scores_shape[] = {cache->num_heads, new_seq_len, new_seq_len};
 
@@ -127,7 +124,6 @@ void attention_init_random(MultiHeadAttention* attn, float std) {
 
   int size = attn->hidden_dim * attn->hidden_dim;
 
-  // Box-Muller 初始化
   for (int i = 0; i < size; i++) {
     float u1 = (float)rand() / RAND_MAX;
     float u2 = (float)rand() / RAND_MAX;
@@ -170,11 +166,10 @@ Tensor* create_causal_mask(int seq_len) {
   Tensor* mask = tensor_zeros(2, shape);
   if (mask == NULL) return NULL;
 
-  // mask[i][j] = 0 if j <= i, else -inf
   for (int i = 0; i < seq_len; i++) {
     for (int j = 0; j < seq_len; j++) {
       if (j > i) {
-        mask->data[i * seq_len + j] = -1e9f;  // 用大负数代替 -inf
+        mask->data[i * seq_len + j] = -1e9f;
       }
     }
   }
@@ -190,12 +185,10 @@ void single_head_attention(
   int seq_len = Q->shape[0];
   int head_dim = Q->shape[1];
 
-  // 分配临时 scores 和 attn
   int scores_shape[] = {seq_len, seq_len};
   Tensor* scores = tensor_zeros(2, scores_shape);
   Tensor* attn_weights = tensor_zeros(2, scores_shape);
 
-  // scores = Q @ K^T
   for (int i = 0; i < seq_len; i++) {
     for (int j = 0; j < seq_len; j++) {
       float sum = 0.0f;
@@ -206,14 +199,12 @@ void single_head_attention(
     }
   }
 
-  // scores = scores + mask
   if (mask != NULL) {
     for (int i = 0; i < seq_len * seq_len; i++) {
       scores->data[i] += mask->data[i];
     }
   }
 
-  // attn = softmax(scores) - 对每行
   for (int i = 0; i < seq_len; i++) {
     float max_val = -FLT_MAX;
     for (int j = 0; j < seq_len; j++) {
@@ -233,7 +224,6 @@ void single_head_attention(
     }
   }
 
-  // output = attn @ V
   for (int i = 0; i < seq_len; i++) {
     for (int d = 0; d < head_dim; d++) {
       float sum = 0.0f;
@@ -262,39 +252,32 @@ void attention_forward(
   int num_heads = attn->num_heads;
   int head_dim = attn->head_dim;
 
-  // 检查并调整缓存大小
   if (cache->seq_len != seq_len) {
     attention_cache_resize(cache, seq_len);
   }
 
-  // Step 1: 计算 Q, K, V
-  // Q = input @ W_q, K = input @ W_k, V = input @ W_v
   matmul_inplace(cache->Q, input, attn->W_q);
   matmul_inplace(cache->K, input, attn->W_k);
   matmul_inplace(cache->V, input, attn->W_v);
 
-  // Step 2-6: 多头注意力计算
-  // 对每个头分别计算
   for (int h = 0; h < num_heads; h++) {
     int head_offset = h * head_dim;
 
-    // 对每个位置计算 scores
     for (int i = 0; i < seq_len; i++) {
       for (int j = 0; j < seq_len; j++) {
         float sum = 0.0f;
-        // Q[i, head_offset:head_offset+head_dim] @ K[j, head_offset:head_offset+head_dim]
+
         for (int d = 0; d < head_dim; d++) {
           float q_val = cache->Q->data[i * hidden_dim + head_offset + d];
           float k_val = cache->K->data[j * hidden_dim + head_offset + d];
           sum += q_val * k_val;
         }
-        // scores[h, i, j] = sum * scale
+
         cache->scores->data[h * seq_len * seq_len + i * seq_len + j] = sum * attn->scale;
       }
     }
   }
 
-  // 添加掩码
   if (mask != NULL) {
     for (int h = 0; h < num_heads; h++) {
       for (int i = 0; i < seq_len; i++) {
@@ -306,12 +289,10 @@ void attention_forward(
     }
   }
 
-  // Softmax (对每个头的每行)
   for (int h = 0; h < num_heads; h++) {
     for (int i = 0; i < seq_len; i++) {
       int row_start = h * seq_len * seq_len + i * seq_len;
 
-      // 找最大值
       float max_val = -FLT_MAX;
       for (int j = 0; j < seq_len; j++) {
         if (cache->scores->data[row_start + j] > max_val) {
@@ -319,22 +300,18 @@ void attention_forward(
         }
       }
 
-      // exp 和 sum
       float sum = 0.0f;
       for (int j = 0; j < seq_len; j++) {
         cache->attn->data[row_start + j] = expf(cache->scores->data[row_start + j] - max_val);
         sum += cache->attn->data[row_start + j];
       }
 
-      // 归一化
       for (int j = 0; j < seq_len; j++) {
         cache->attn->data[row_start + j] /= sum;
       }
     }
   }
 
-  // attn @ V -> attn_out
-  // 清零 attn_out
   memset(cache->attn_out->data, 0, cache->attn_out->size * sizeof(float));
 
   for (int h = 0; h < num_heads; h++) {
@@ -353,7 +330,6 @@ void attention_forward(
     }
   }
 
-  // Step 7: output = attn_out @ W_o
   matmul_inplace(output, cache->attn_out, attn->W_o);
 }
 
@@ -378,7 +354,6 @@ void attention_print_info(MultiHeadAttention* attn) {
 int attention_num_params(MultiHeadAttention* attn) {
   if (attn == NULL) return 0;
 
-  // 4 个权重矩阵，每个 [hidden_dim, hidden_dim]
   return 4 * attn->hidden_dim * attn->hidden_dim;
 }
 
@@ -386,8 +361,6 @@ Tensor* attention_get_weights(AttentionCache* cache) {
   if (cache == NULL) return NULL;
   return cache->attn;
 }
-
-// ============ KV Cache 支持实现 ============
 
 void attention_prefill_kv_cache(
   MultiHeadAttention* attn,
@@ -406,24 +379,16 @@ void attention_prefill_kv_cache(
   int num_heads = attn->num_heads;
   int head_dim = attn->head_dim;
 
-  // 检查并调整缓存大小
   if (cache->seq_len != seq_len) {
     attention_cache_resize(cache, seq_len);
   }
 
-  // Step 1: 计算 Q, K, V
   matmul_inplace(cache->Q, input, attn->W_q);
   matmul_inplace(cache->K, input, attn->W_k);
   matmul_inplace(cache->V, input, attn->W_v);
 
-  // Step 2: 将 K, V 存入 KV Cache
-  // 注意: 这里从位置 0 开始存储 (prefill 阶段)
   kv_cache_update(kv_cache, layer_idx, cache->K, cache->V, seq_len);
 
-  // Step 3-6: 多头注意力计算 (使用刚存入的 K, V)
-  // 这里可以直接使用 cache->K 和 cache->V，因为它们包含了所有需要的数据
-
-  // 计算 scores
   for (int h = 0; h < num_heads; h++) {
     int head_offset = h * head_dim;
 
@@ -440,7 +405,6 @@ void attention_prefill_kv_cache(
     }
   }
 
-  // 添加掩码
   if (mask != NULL) {
     for (int h = 0; h < num_heads; h++) {
       for (int i = 0; i < seq_len; i++) {
@@ -452,7 +416,6 @@ void attention_prefill_kv_cache(
     }
   }
 
-  // Softmax
   for (int h = 0; h < num_heads; h++) {
     for (int i = 0; i < seq_len; i++) {
       int row_start = h * seq_len * seq_len + i * seq_len;
@@ -476,7 +439,6 @@ void attention_prefill_kv_cache(
     }
   }
 
-  // attn @ V
   memset(cache->attn_out->data, 0, cache->attn_out->size * sizeof(float));
 
   for (int h = 0; h < num_heads; h++) {
@@ -495,7 +457,6 @@ void attention_prefill_kv_cache(
     }
   }
 
-  // output = attn_out @ W_o
   matmul_inplace(output, cache->attn_out, attn->W_o);
 }
 
@@ -511,19 +472,16 @@ void attention_forward_kv_cache(
   if (attn == NULL || input == NULL || kv_cache == NULL ||
     cache == NULL || output == NULL) return;
 
-  int cur_seq_len = input->shape[0];  // 通常为 1 (单 token 解码)
+  int cur_seq_len = input->shape[0];
   int hidden_dim = attn->hidden_dim;
   int num_heads = attn->num_heads;
   int head_dim = attn->head_dim;
-  int total_len = start_pos + cur_seq_len;  // 包括新 token 的总长度
+  int total_len = start_pos + cur_seq_len;
 
-  // 确保缓存大小足够
   if (cache->seq_len < cur_seq_len) {
     attention_cache_resize(cache, cur_seq_len);
   }
 
-  // Step 1: 计算新 token 的 Q, K, V
-  // 使用临时张量存储
   int qkv_shape[] = {cur_seq_len, hidden_dim};
   Tensor* new_Q = tensor_zeros(2, qkv_shape);
   Tensor* new_K = tensor_zeros(2, qkv_shape);
@@ -533,28 +491,19 @@ void attention_forward_kv_cache(
   matmul_inplace(new_K, input, attn->W_k);
   matmul_inplace(new_V, input, attn->W_v);
 
-  // Step 2: 将新的 K, V 追加到 KV Cache
-  // 直接存入指定位置
   for (int t = 0; t < cur_seq_len; t++) {
     kv_cache_update_pos(kv_cache, layer_idx, start_pos + t,
                &new_K->data[t * hidden_dim],
                &new_V->data[t * hidden_dim]);
   }
 
-  // 更新 KV Cache 长度
   if (kv_cache->current_len < total_len) {
     kv_cache_set_len(kv_cache, total_len);
   }
 
-  // Step 3: 从 KV Cache 获取完整的 K, V
   Tensor* cached_K = kv_cache_get_k(kv_cache, layer_idx);
   Tensor* cached_V = kv_cache_get_v(kv_cache, layer_idx);
 
-  // Step 4: 计算注意力 scores
-  // Q: [cur_seq_len, hidden_dim], K: [total_len, hidden_dim]
-  // scores: [num_heads, cur_seq_len, total_len]
-
-  // 分配临时 scores 和 attn
   int scores_shape[] = {num_heads, cur_seq_len, total_len};
   Tensor* scores = tensor_zeros(3, scores_shape);
   Tensor* attn_weights = tensor_zeros(3, scores_shape);
@@ -575,8 +524,6 @@ void attention_forward_kv_cache(
     }
   }
 
-  // Step 5: 应用因果掩码 (只对解码阶段有效)
-  // 位置 start_pos + i 只能看到位置 0 到 start_pos + i
   for (int h = 0; h < num_heads; h++) {
     for (int i = 0; i < cur_seq_len; i++) {
       int cur_pos = start_pos + i;
@@ -588,7 +535,6 @@ void attention_forward_kv_cache(
     }
   }
 
-  // Step 6: Softmax
   for (int h = 0; h < num_heads; h++) {
     for (int i = 0; i < cur_seq_len; i++) {
       int row_start = h * cur_seq_len * total_len + i * total_len;
@@ -612,7 +558,6 @@ void attention_forward_kv_cache(
     }
   }
 
-  // Step 7: attn @ V -> output_pre_proj
   int out_shape[] = {cur_seq_len, hidden_dim};
   Tensor* attn_out = tensor_zeros(2, out_shape);
 
@@ -632,10 +577,8 @@ void attention_forward_kv_cache(
     }
   }
 
-  // Step 8: output = attn_out @ W_o
   matmul_inplace(output, attn_out, attn->W_o);
 
-  // 清理临时张量
   tensor_free(new_Q);
   tensor_free(new_K);
   tensor_free(new_V);

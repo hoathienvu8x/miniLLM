@@ -5,7 +5,6 @@
 #include <math.h>
 #include <time.h>
 
-// 随机数生成器是否已初始化
 static int rand_initialized = 0;
 
 static void ensure_rand_initialized(void) {
@@ -15,7 +14,6 @@ static void ensure_rand_initialized(void) {
   }
 }
 
-// Box-Muller 变换生成正态分布随机数
 static float randn(void) {
   static int has_spare = 0;
   static float spare;
@@ -38,7 +36,6 @@ static float randn(void) {
   return u * s;
 }
 
-// 计算步长 (strides)
 static void compute_strides(int ndim, int* shape, int* strides) {
   if (ndim == 0) return;
   strides[ndim - 1] = 1;
@@ -47,7 +44,6 @@ static void compute_strides(int ndim, int* shape, int* strides) {
   }
 }
 
-// 计算总元素数
 static int compute_size(int ndim, int* shape) {
   int size = 1;
   for (int i = 0; i < ndim; i++) {
@@ -67,7 +63,6 @@ Tensor* tensor_create(int ndim, int* shape) {
   t->ndim = ndim;
   t->size = compute_size(ndim, shape);
 
-  // 分配形状数组
   t->shape = (int*)malloc(ndim * sizeof(int));
   if (t->shape == NULL) {
     free(t);
@@ -75,7 +70,6 @@ Tensor* tensor_create(int ndim, int* shape) {
   }
   memcpy(t->shape, shape, ndim * sizeof(int));
 
-  // 分配步长数组
   t->strides = (int*)malloc(ndim * sizeof(int));
   if (t->strides == NULL) {
     free(t->shape);
@@ -84,7 +78,6 @@ Tensor* tensor_create(int ndim, int* shape) {
   }
   compute_strides(ndim, shape, t->strides);
 
-  // 分配数据
   t->data = (float*)malloc(t->size * sizeof(float));
   if (t->data == NULL) {
     free(t->strides);
@@ -172,7 +165,7 @@ Tensor* tensor_reshape(Tensor* t, int new_ndim, int* new_shape) {
   Tensor* reshaped = (Tensor*)malloc(sizeof(Tensor));
   if (reshaped == NULL) return NULL;
 
-  reshaped->data = t->data;  // 共享数据
+  reshaped->data = t->data;
   reshaped->ndim = new_ndim;
   reshaped->size = new_size;
 
@@ -201,7 +194,6 @@ Tensor* tensor_reshape_copy(Tensor* t, int new_ndim, int* new_shape) {
     return NULL;
   }
 
-  // 释放 copy 的 shape 和 strides, 但保留 data
   free(copy->shape);
   free(copy->strides);
   free(copy);
@@ -255,7 +247,7 @@ void tensor_print(Tensor* t) {
   tensor_print_shape(t);
 
   if (t->ndim == 1) {
-    // 1D 张量
+
     printf("[");
     for (int i = 0; i < t->shape[0]; i++) {
       printf("%8.4f", t->data[i]);
@@ -263,7 +255,7 @@ void tensor_print(Tensor* t) {
     }
     printf("]\n");
   } else if (t->ndim == 2) {
-    // 2D 张量 (矩阵)
+
     printf("[\n");
     for (int i = 0; i < t->shape[0]; i++) {
       printf("  [");
@@ -278,7 +270,7 @@ void tensor_print(Tensor* t) {
     }
     printf("]\n");
   } else {
-    // 高维张量: 只打印前几个元素
+
     printf("data=[");
     int print_count = (t->size < 10) ? t->size : 10;
     for (int i = 0; i < print_count; i++) {

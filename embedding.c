@@ -17,7 +17,6 @@ Embedding* embedding_create(int vocab_size, int hidden_dim, int max_seq_len) {
   emb->hidden_dim = hidden_dim;
   emb->max_seq_len = max_seq_len;
 
-  // 创建 token embedding [vocab_size, hidden_dim]
   int token_shape[] = {vocab_size, hidden_dim};
   emb->token_embedding = tensor_zeros(2, token_shape);
   if (emb->token_embedding == NULL) {
@@ -25,7 +24,6 @@ Embedding* embedding_create(int vocab_size, int hidden_dim, int max_seq_len) {
     return NULL;
   }
 
-  // 创建 position embedding [max_seq_len, hidden_dim]
   int pos_shape[] = {max_seq_len, hidden_dim};
   emb->position_embedding = tensor_zeros(2, pos_shape);
   if (emb->position_embedding == NULL) {
@@ -52,10 +50,9 @@ void embedding_free(Embedding* emb) {
 void embedding_init_random(Embedding* emb, float std) {
   if (emb == NULL || emb->token_embedding == NULL) return;
 
-  // 使用正态分布初始化 token embedding
   int size = emb->token_embedding->size;
   for (int i = 0; i < size; i++) {
-    // Box-Muller 变换
+
     float u1 = (float)rand() / RAND_MAX;
     float u2 = (float)rand() / RAND_MAX;
     if (u1 < 1e-10f) u1 = 1e-10f;
@@ -70,8 +67,6 @@ void embedding_init_sinusoidal_position(Embedding* emb) {
   int max_len = emb->max_seq_len;
   int dim = emb->hidden_dim;
 
-  // PE(pos, 2i)   = sin(pos / 10000^(2i/d))
-  // PE(pos, 2i+1) = cos(pos / 10000^(2i/d))
   for (int pos = 0; pos < max_len; pos++) {
     for (int i = 0; i < dim; i++) {
       float div_term = powf(10000.0f, (float)(i / 2 * 2) / (float)dim);
@@ -109,13 +104,11 @@ void embedding_forward(Embedding* emb, int* token_ids, int seq_len, Tensor* outp
 
   int hidden_dim = emb->hidden_dim;
 
-  // output = token_embedding[token_ids] + position_embedding[0:seq_len]
   for (int pos = 0; pos < seq_len; pos++) {
     int token_id = token_ids[pos];
 
-    // 边界检查
     if (token_id < 0 || token_id >= emb->vocab_size) {
-      token_id = 1;  // 使用 UNK token
+      token_id = 1;
     }
 
     int token_offset = token_id * hidden_dim;
@@ -139,7 +132,7 @@ void embedding_get_token(Embedding* emb, int* token_ids, int seq_len, Tensor* ou
     int token_id = token_ids[pos];
 
     if (token_id < 0 || token_id >= emb->vocab_size) {
-      token_id = 1;  // UNK
+      token_id = 1;
     }
 
     int token_offset = token_id * hidden_dim;
