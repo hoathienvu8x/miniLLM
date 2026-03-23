@@ -17,15 +17,15 @@
  * 7. out = concat(heads) @ W_o
  */
 typedef struct {
-    Tensor* W_q;        // Query 权重 [hidden_dim, hidden_dim]
-    Tensor* W_k;        // Key 权重 [hidden_dim, hidden_dim]
-    Tensor* W_v;        // Value 权重 [hidden_dim, hidden_dim]
-    Tensor* W_o;        // Output 权重 [hidden_dim, hidden_dim]
+  Tensor* W_q;        // Query 权重 [hidden_dim, hidden_dim]
+  Tensor* W_k;        // Key 权重 [hidden_dim, hidden_dim]
+  Tensor* W_v;        // Value 权重 [hidden_dim, hidden_dim]
+  Tensor* W_o;        // Output 权重 [hidden_dim, hidden_dim]
 
-    int hidden_dim;     // 隐藏维度
-    int num_heads;      // 注意力头数
-    int head_dim;       // 每个头的维度 = hidden_dim / num_heads
-    float scale;        // 缩放因子 = 1 / sqrt(head_dim)
+  int hidden_dim;     // 隐藏维度
+  int num_heads;      // 注意力头数
+  int head_dim;       // 每个头的维度 = hidden_dim / num_heads
+  float scale;        // 缩放因子 = 1 / sqrt(head_dim)
 } MultiHeadAttention;
 
 /**
@@ -33,15 +33,15 @@ typedef struct {
  * 用于避免重复内存分配
  */
 typedef struct {
-    Tensor* Q;          // [seq_len, hidden_dim]
-    Tensor* K;          // [seq_len, hidden_dim]
-    Tensor* V;          // [seq_len, hidden_dim]
-    Tensor* scores;     // [num_heads, seq_len, seq_len]
-    Tensor* attn;       // [num_heads, seq_len, seq_len]
-    Tensor* attn_out;   // [seq_len, hidden_dim]
-    int seq_len;
-    int hidden_dim;
-    int num_heads;
+  Tensor* Q;          // [seq_len, hidden_dim]
+  Tensor* K;          // [seq_len, hidden_dim]
+  Tensor* V;          // [seq_len, hidden_dim]
+  Tensor* scores;     // [num_heads, seq_len, seq_len]
+  Tensor* attn;       // [num_heads, seq_len, seq_len]
+  Tensor* attn_out;   // [seq_len, hidden_dim]
+  int seq_len;
+  int hidden_dim;
+  int num_heads;
 } AttentionCache;
 
 // ============ 创建和销毁 ============
@@ -104,11 +104,11 @@ Tensor* create_causal_mask(int seq_len);
  * @param output 输出张量 [seq_len, hidden_dim] (需预先分配)
  */
 void attention_forward(
-    MultiHeadAttention* attn,
-    Tensor* input,
-    Tensor* mask,
-    AttentionCache* cache,
-    Tensor* output
+  MultiHeadAttention* attn,
+  Tensor* input,
+  Tensor* mask,
+  AttentionCache* cache,
+  Tensor* output
 );
 
 /**
@@ -121,9 +121,9 @@ void attention_forward(
  * @param output 输出 [seq_len, head_dim]
  */
 void single_head_attention(
-    Tensor* Q, Tensor* K, Tensor* V,
-    Tensor* mask, float scale,
-    Tensor* output
+  Tensor* Q, Tensor* K, Tensor* V,
+  Tensor* mask, float scale,
+  Tensor* output
 );
 
 // ============ 工具函数 ============
@@ -165,13 +165,13 @@ Tensor* attention_get_weights(AttentionCache* cache);
  * @param output 输出张量 [seq_len, hidden_dim]
  */
 void attention_forward_kv_cache(
-    MultiHeadAttention* attn,
-    Tensor* input,
-    KVCache* kv_cache,
-    int layer_idx,
-    int start_pos,
-    AttentionCache* cache,
-    Tensor* output
+  MultiHeadAttention* attn,
+  Tensor* input,
+  KVCache* kv_cache,
+  int layer_idx,
+  int start_pos,
+  AttentionCache* cache,
+  Tensor* output
 );
 
 /**
@@ -186,13 +186,13 @@ void attention_forward_kv_cache(
  * @param output 输出张量 [seq_len, hidden_dim]
  */
 void attention_prefill_kv_cache(
-    MultiHeadAttention* attn,
-    Tensor* input,
-    KVCache* kv_cache,
-    int layer_idx,
-    Tensor* mask,
-    AttentionCache* cache,
-    Tensor* output
+  MultiHeadAttention* attn,
+  Tensor* input,
+  KVCache* kv_cache,
+  int layer_idx,
+  Tensor* mask,
+  AttentionCache* cache,
+  Tensor* output
 );
 
 #endif // ATTENTION_H

@@ -11,21 +11,21 @@
  * 通常 ffn_dim = 4 * hidden_dim
  */
 typedef struct {
-    Tensor* W1;         // 第一层权重 [hidden_dim, ffn_dim]
-    Tensor* b1;         // 第一层偏置 [ffn_dim]
-    Tensor* W2;         // 第二层权重 [ffn_dim, hidden_dim]
-    Tensor* b2;         // 第二层偏置 [hidden_dim]
-    int hidden_dim;
-    int ffn_dim;
+  Tensor* W1;         // 第一层权重 [hidden_dim, ffn_dim]
+  Tensor* b1;         // 第一层偏置 [ffn_dim]
+  Tensor* W2;         // 第二层权重 [ffn_dim, hidden_dim]
+  Tensor* b2;         // 第二层偏置 [hidden_dim]
+  int hidden_dim;
+  int ffn_dim;
 } FFN;
 
 /**
  * FFN 计算缓存
  */
 typedef struct {
-    Tensor* hidden;     // 中间层输出 [seq_len, ffn_dim]
-    int seq_len;
-    int ffn_dim;
+  Tensor* hidden;     // 中间层输出 [seq_len, ffn_dim]
+  int seq_len;
+  int ffn_dim;
 } FFNCache;
 
 // ============ 创建和销毁 ============

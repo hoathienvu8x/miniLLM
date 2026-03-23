@@ -15,28 +15,28 @@
  * x = x + FFN(LayerNorm(x))
  */
 typedef struct {
-    LayerNorm* ln1;             // 注意力前的 LayerNorm
-    MultiHeadAttention* attn;   // 多头自注意力
-    LayerNorm* ln2;             // FFN 前的 LayerNorm
-    FFN* ffn;                   // 前馈网络
+  LayerNorm* ln1;             // 注意力前的 LayerNorm
+  MultiHeadAttention* attn;   // 多头自注意力
+  LayerNorm* ln2;             // FFN 前的 LayerNorm
+  FFN* ffn;                   // 前馈网络
 
-    int hidden_dim;
-    int num_heads;
-    int ffn_dim;
+  int hidden_dim;
+  int num_heads;
+  int ffn_dim;
 } TransformerBlock;
 
 /**
  * TransformerBlock 计算缓存
  */
 typedef struct {
-    Tensor* ln1_out;        // LayerNorm1 输出
-    Tensor* attn_out;       // Attention 输出
-    Tensor* ln2_out;        // LayerNorm2 输出
-    Tensor* ffn_out;        // FFN 输出
-    AttentionCache* attn_cache;
-    FFNCache* ffn_cache;
-    int seq_len;
-    int hidden_dim;
+  Tensor* ln1_out;        // LayerNorm1 输出
+  Tensor* attn_out;       // Attention 输出
+  Tensor* ln2_out;        // LayerNorm2 输出
+  Tensor* ffn_out;        // FFN 输出
+  AttentionCache* attn_cache;
+  FFNCache* ffn_cache;
+  int seq_len;
+  int hidden_dim;
 } TransformerCache;
 
 // ============ 创建和销毁 ============
@@ -90,11 +90,11 @@ void transformer_block_init(TransformerBlock* block, float std);
  * @param output 输出张量 [seq_len, hidden_dim] (需预先分配)
  */
 void transformer_block_forward(
-    TransformerBlock* block,
-    Tensor* input,
-    Tensor* mask,
-    TransformerCache* cache,
-    Tensor* output
+  TransformerBlock* block,
+  Tensor* input,
+  Tensor* mask,
+  TransformerCache* cache,
+  Tensor* output
 );
 
 // ============ 工具函数 ============
@@ -124,13 +124,13 @@ int transformer_block_num_params(TransformerBlock* block);
  * @param output 输出张量 [seq_len, hidden_dim]
  */
 void transformer_block_forward_prefill(
-    TransformerBlock* block,
-    Tensor* input,
-    KVCache* kv_cache,
-    int layer_idx,
-    Tensor* mask,
-    TransformerCache* cache,
-    Tensor* output
+  TransformerBlock* block,
+  Tensor* input,
+  KVCache* kv_cache,
+  int layer_idx,
+  Tensor* mask,
+  TransformerCache* cache,
+  Tensor* output
 );
 
 /**
@@ -146,13 +146,13 @@ void transformer_block_forward_prefill(
  * @param output 输出张量 [1, hidden_dim]
  */
 void transformer_block_forward_decode(
-    TransformerBlock* block,
-    Tensor* input,
-    KVCache* kv_cache,
-    int layer_idx,
-    int pos,
-    TransformerCache* cache,
-    Tensor* output
+  TransformerBlock* block,
+  Tensor* input,
+  KVCache* kv_cache,
+  int layer_idx,
+  int pos,
+  TransformerCache* cache,
+  Tensor* output
 );
 
 #endif // TRANSFORMER_H

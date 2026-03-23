@@ -12,10 +12,10 @@
  * 其中 mean 和 var 是在最后一个维度上计算的
  */
 typedef struct {
-    Tensor* gamma;      // 可学习缩放参数 [hidden_dim]
-    Tensor* beta;       // 可学习偏移参数 [hidden_dim]
-    int hidden_dim;
-    float eps;          // 防止除零的小常数
+  Tensor* gamma;      // 可学习缩放参数 [hidden_dim]
+  Tensor* beta;       // 可学习偏移参数 [hidden_dim]
+  int hidden_dim;
+  float eps;          // 防止除零的小常数
 } LayerNorm;
 
 // ============ 创建和销毁 ============

@@ -18,23 +18,23 @@
  * 4. LM Head (输出投影到词汇表)
  */
 typedef struct {
-    ModelConfig config;
-    Embedding* embedding;           // 词嵌入层
-    TransformerBlock** layers;      // Transformer 层数组
-    LayerNorm* final_ln;            // 最终 LayerNorm
-    Tensor* lm_head;                // 输出投影 [hidden_dim, vocab_size]
+  ModelConfig config;
+  Embedding* embedding;           // 词嵌入层
+  TransformerBlock** layers;      // Transformer 层数组
+  LayerNorm* final_ln;            // 最终 LayerNorm
+  Tensor* lm_head;                // 输出投影 [hidden_dim, vocab_size]
 } GPTModel;
 
 /**
  * GPTModel 计算缓存
  */
 typedef struct {
-    Tensor* hidden;                 // 隐藏状态 [seq_len, hidden_dim]
-    Tensor* logits;                 // 输出 logits [seq_len, vocab_size]
-    TransformerCache** layer_caches; // 每层的缓存
-    Tensor* mask;                   // 因果掩码
-    int seq_len;
-    int num_layers;
+  Tensor* hidden;                 // 隐藏状态 [seq_len, hidden_dim]
+  Tensor* logits;                 // 输出 logits [seq_len, vocab_size]
+  TransformerCache** layer_caches; // 每层的缓存
+  Tensor* mask;                   // 因果掩码
+  int seq_len;
+  int num_layers;
 } GPTCache;
 
 // ============ 创建和销毁 ============
@@ -86,11 +86,11 @@ void model_init_random(GPTModel* model, float std);
  * @param logits 输出 logits [seq_len, vocab_size] (需预先分配)
  */
 void model_forward(
-    GPTModel* model,
-    int* input_ids,
-    int seq_len,
-    GPTCache* cache,
-    Tensor* logits
+  GPTModel* model,
+  int* input_ids,
+  int seq_len,
+  GPTCache* cache,
+  Tensor* logits
 );
 
 /**
@@ -155,12 +155,12 @@ KVCache* model_create_kv_cache(GPTModel* model);
  * @param logits 输出 logits [seq_len, vocab_size]
  */
 void model_forward_prefill(
-    GPTModel* model,
-    int* input_ids,
-    int seq_len,
-    KVCache* kv_cache,
-    GPTCache* gpt_cache,
-    Tensor* logits
+  GPTModel* model,
+  int* input_ids,
+  int seq_len,
+  KVCache* kv_cache,
+  GPTCache* gpt_cache,
+  Tensor* logits
 );
 
 /**
@@ -174,12 +174,12 @@ void model_forward_prefill(
  * @param logits 输出 logits [vocab_size]
  */
 void model_forward_decode(
-    GPTModel* model,
-    int token_id,
-    int pos,
-    KVCache* kv_cache,
-    GPTCache* gpt_cache,
-    Tensor* logits
+  GPTModel* model,
+  int token_id,
+  int pos,
+  KVCache* kv_cache,
+  GPTCache* gpt_cache,
+  Tensor* logits
 );
 
 #endif // MODEL_H

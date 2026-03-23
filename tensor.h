@@ -11,11 +11,11 @@
  *   [0,0], [0,1], [0,2], [1,0], [1,1], [1,2]
  */
 typedef struct {
-    float* data;       // 数据指针
-    int* shape;        // 形状数组, 长度为 ndim
-    int* strides;      // 步长数组, 用于索引计算
-    int ndim;          // 维度数
-    int size;          // 总元素数
+  float* data;       // 数据指针
+  int* shape;        // 形状数组, 长度为 ndim
+  int* strides;      // 步长数组, 用于索引计算
+  int ndim;          // 维度数
+  int size;          // 总元素数
 } Tensor;
 
 // ============ 创建和销毁 ============

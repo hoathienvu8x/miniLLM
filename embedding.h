@@ -12,11 +12,11 @@
  * - position_embedding: 位置编码 [max_seq_len, hidden_dim]
  */
 typedef struct {
-    Tensor* token_embedding;      // [vocab_size, hidden_dim]
-    Tensor* position_embedding;   // [max_seq_len, hidden_dim]
-    int vocab_size;
-    int hidden_dim;
-    int max_seq_len;
+  Tensor* token_embedding;      // [vocab_size, hidden_dim]
+  Tensor* position_embedding;   // [max_seq_len, hidden_dim]
+  int vocab_size;
+  int hidden_dim;
+  int max_seq_len;
 } Embedding;
 
 // ============ 创建和销毁 ============

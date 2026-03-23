@@ -18,31 +18,31 @@
  * BPE 合并规则
  */
 typedef struct {
-    int first;      // 第一个 token ID
-    int second;     // 第二个 token ID
-    int result;     // 合并后的 token ID
+  int first;      // 第一个 token ID
+  int second;     // 第二个 token ID
+  int result;     // 合并后的 token ID
 } BPEMerge;
 
 /**
  * BPE Tokenizer 结构
  */
 typedef struct {
-    // 词汇表
-    char** vocab;           // token ID -> token 字符串
-    int vocab_size;         // 当前词汇表大小
+  // 词汇表
+  char** vocab;           // token ID -> token 字符串
+  int vocab_size;         // 当前词汇表大小
 
-    // 合并规则
-    BPEMerge* merges;       // 合并规则数组
-    int num_merges;         // 合并规则数量
+  // 合并规则
+  BPEMerge* merges;       // 合并规则数组
+  int num_merges;         // 合并规则数量
 
-    // 特殊 token
-    int pad_id;             // <pad> token ID
-    int unk_id;             // <unk> token ID
-    int bos_id;             // <bos> token ID
-    int eos_id;             // <eos> token ID
+  // 特殊 token
+  int pad_id;             // <pad> token ID
+  int unk_id;             // <unk> token ID
+  int bos_id;             // <bos> token ID
+  int eos_id;             // <eos> token ID
 
-    // 字符到 token ID 映射 (用于基础字符)
-    int char_to_id[256];    // ASCII 字符 -> token ID
+  // 字符到 token ID 映射 (用于基础字符)
+  int char_to_id[256];    // ASCII 字符 -> token ID
 } BPETokenizer;
 
 // ============ 创建和销毁 ============
@@ -97,7 +97,7 @@ int bpe_load_vocab(BPETokenizer* tok, const char* filepath);
  * @return token ID 数组 (需要 free)
  */
 int* bpe_encode(BPETokenizer* tok, const char* text, int* out_len,
-                int add_bos, int add_eos);
+        int add_bos, int add_eos);
 
 /**
  * 将 token IDs 解码为文本

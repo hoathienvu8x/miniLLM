@@ -21,19 +21,19 @@
  * 单层的 KV 缓存
  */
 typedef struct {
-    Tensor* k_cache;        // [max_seq_len, hidden_dim]
-    Tensor* v_cache;        // [max_seq_len, hidden_dim]
+  Tensor* k_cache;        // [max_seq_len, hidden_dim]
+  Tensor* v_cache;        // [max_seq_len, hidden_dim]
 } LayerKVCache;
 
 /**
  * 完整模型的 KV 缓存
  */
 typedef struct {
-    LayerKVCache* layers;   // [num_layers]
-    int num_layers;         // Transformer 层数
-    int max_seq_len;        // 最大序列长度
-    int hidden_dim;         // 隐藏维度
-    int current_len;        // 当前缓存的序列长度
+  LayerKVCache* layers;   // [num_layers]
+  int num_layers;         // Transformer 层数
+  int max_seq_len;        // 最大序列长度
+  int hidden_dim;         // 隐藏维度
+  int current_len;        // 当前缓存的序列长度
 } KVCache;
 
 // ============ 创建和销毁 ============
@@ -64,7 +64,7 @@ void kv_cache_free(KVCache* cache);
  * @return 0 成功, -1 失败
  */
 int kv_cache_update(KVCache* cache, int layer_idx,
-                    Tensor* new_k, Tensor* new_v, int num_new_tokens);
+          Tensor* new_k, Tensor* new_v, int num_new_tokens);
 
 /**
  * 更新指定层的单个位置的 KV 缓存
@@ -75,7 +75,7 @@ int kv_cache_update(KVCache* cache, int layer_idx,
  * @param v_data V 值数据 [hidden_dim]
  */
 void kv_cache_update_pos(KVCache* cache, int layer_idx, int pos,
-                         float* k_data, float* v_data);
+             float* k_data, float* v_data);
 
 /**
  * 获取指定层的 K 缓存 (到当前位置)
