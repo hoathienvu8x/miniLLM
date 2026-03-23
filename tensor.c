@@ -158,7 +158,10 @@ Tensor* tensor_reshape(Tensor* t, int new_ndim, int* new_shape) {
 
   int new_size = compute_size(new_ndim, new_shape);
   if (new_size != t->size) {
-    fprintf(stderr, "Error: reshape size mismatch (%d vs %d)\n", t->size, new_size);
+    fprintf(
+      stderr, "Error: reshape size mismatch (%d vs %d)\n",
+      t->size, new_size
+    );
     return NULL;
   }
 

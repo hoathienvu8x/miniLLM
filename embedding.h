@@ -21,9 +21,13 @@ void embedding_init_sinusoidal_position(Embedding* emb);
 
 void embedding_init_learned_position(Embedding* emb, float std);
 
-void embedding_forward(Embedding* emb, int* token_ids, int seq_len, Tensor* output);
+void embedding_forward(
+  Embedding* emb, int* token_ids, int seq_len, Tensor* output
+);
 
-void embedding_get_token(Embedding* emb, int* token_ids, int seq_len, Tensor* output);
+void embedding_get_token(
+  Embedding* emb, int* token_ids, int seq_len, Tensor* output
+);
 
 void embedding_get_position(Embedding* emb, int seq_len, Tensor* output);
 

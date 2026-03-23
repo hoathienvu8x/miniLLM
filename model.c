@@ -112,7 +112,9 @@ GPTCache* model_cache_create(GPTModel* model, int seq_len) {
 
   cache->mask = create_causal_mask(seq_len);
 
-  cache->layer_caches = (TransformerCache**)malloc(cache->num_layers * sizeof(TransformerCache*));
+  cache->layer_caches = (TransformerCache**)malloc(
+    cache->num_layers * sizeof(TransformerCache*)
+  );
   if (cache->layer_caches == NULL) {
     tensor_free(cache->hidden);
     tensor_free(cache->logits);
@@ -283,13 +285,17 @@ void model_forward(
   }
 }
 
-void model_get_last_logits(Tensor* logits, int seq_len, Tensor* last_logits) {
+void model_get_last_logits(
+  Tensor* logits, int seq_len, Tensor* last_logits
+) {
   if (logits == NULL || last_logits == NULL) return;
 
   int vocab_size = logits->shape[1];
   int offset = (seq_len - 1) * vocab_size;
 
-  memcpy(last_logits->data, &logits->data[offset], vocab_size * sizeof(float));
+  memcpy(
+    last_logits->data, &logits->data[offset], vocab_size * sizeof(float)
+  );
 }
 
 int model_save(GPTModel* model, const char* path) {
@@ -315,35 +321,71 @@ int model_save(GPTModel* model, const char* path) {
 
   check_fwrite(&model->config, sizeof(ModelConfig), 1, f);
 
-  check_fwrite(model->embedding->token_embedding->data,
-       sizeof(float), model->embedding->token_embedding->size, f);
-  check_fwrite(model->embedding->position_embedding->data,
-       sizeof(float), model->embedding->position_embedding->size, f);
+  check_fwrite(
+    model->embedding->token_embedding->data,
+    sizeof(float), model->embedding->token_embedding->size, f
+  );
+  check_fwrite(
+    model->embedding->position_embedding->data,
+    sizeof(float), model->embedding->position_embedding->size, f
+  );
 
   for (int i = 0; i < model->config.num_layers; i++) {
     TransformerBlock* layer = model->layers[i];
 
-    check_fwrite(layer->ln1->gamma->data, sizeof(float), layer->ln1->gamma->size, f);
-    check_fwrite(layer->ln1->beta->data, sizeof(float), layer->ln1->beta->size, f);
+    check_fwrite(
+      layer->ln1->gamma->data, sizeof(float), layer->ln1->gamma->size, f
+    );
+    check_fwrite(
+      layer->ln1->beta->data, sizeof(float), layer->ln1->beta->size, f
+    );
 
-    check_fwrite(layer->attn->W_q->data, sizeof(float), layer->attn->W_q->size, f);
-    check_fwrite(layer->attn->W_k->data, sizeof(float), layer->attn->W_k->size, f);
-    check_fwrite(layer->attn->W_v->data, sizeof(float), layer->attn->W_v->size, f);
-    check_fwrite(layer->attn->W_o->data, sizeof(float), layer->attn->W_o->size, f);
+    check_fwrite(
+      layer->attn->W_q->data, sizeof(float), layer->attn->W_q->size, f
+    );
+    check_fwrite(
+      layer->attn->W_k->data, sizeof(float), layer->attn->W_k->size, f
+    );
+    check_fwrite(
+      layer->attn->W_v->data, sizeof(float), layer->attn->W_v->size, f
+    );
+    check_fwrite(
+      layer->attn->W_o->data, sizeof(float), layer->attn->W_o->size, f
+    );
 
-    check_fwrite(layer->ln2->gamma->data, sizeof(float), layer->ln2->gamma->size, f);
-    check_fwrite(layer->ln2->beta->data, sizeof(float), layer->ln2->beta->size, f);
+    check_fwrite(
+      layer->ln2->gamma->data, sizeof(float), layer->ln2->gamma->size, f
+    );
+    check_fwrite(
+      layer->ln2->beta->data, sizeof(float), layer->ln2->beta->size, f
+    );
 
-    check_fwrite(layer->ffn->W1->data, sizeof(float), layer->ffn->W1->size, f);
-    check_fwrite(layer->ffn->b1->data, sizeof(float), layer->ffn->b1->size, f);
-    check_fwrite(layer->ffn->W2->data, sizeof(float), layer->ffn->W2->size, f);
-    check_fwrite(layer->ffn->b2->data, sizeof(float), layer->ffn->b2->size, f);
+    check_fwrite(
+      layer->ffn->W1->data, sizeof(float), layer->ffn->W1->size, f
+    );
+    check_fwrite(
+      layer->ffn->b1->data, sizeof(float), layer->ffn->b1->size, f
+    );
+    check_fwrite(
+      layer->ffn->W2->data, sizeof(float), layer->ffn->W2->size, f
+    );
+    check_fwrite(
+      layer->ffn->b2->data, sizeof(float), layer->ffn->b2->size, f
+    );
   }
 
-  check_fwrite(model->final_ln->gamma->data, sizeof(float), model->final_ln->gamma->size, f);
-  check_fwrite(model->final_ln->beta->data, sizeof(float), model->final_ln->beta->size, f);
+  check_fwrite(
+    model->final_ln->gamma->data, sizeof(float),
+    model->final_ln->gamma->size, f
+  );
+  check_fwrite(
+    model->final_ln->beta->data, sizeof(float),
+    model->final_ln->beta->size, f
+  );
 
-  check_fwrite(model->lm_head->data, sizeof(float), model->lm_head->size, f);
+  check_fwrite(
+    model->lm_head->data, sizeof(float), model->lm_head->size, f
+  );
 
   fclose(f);
   #undef check_fwrite
@@ -395,35 +437,71 @@ GPTModel* model_load(const char* path) {
     return NULL;
   }
 
-  check_fread(model->embedding->token_embedding->data,
-      sizeof(float), model->embedding->token_embedding->size, f);
-  check_fread(model->embedding->position_embedding->data,
-      sizeof(float), model->embedding->position_embedding->size, f);
+  check_fread(
+    model->embedding->token_embedding->data,
+    sizeof(float), model->embedding->token_embedding->size, f
+  );
+  check_fread(
+    model->embedding->position_embedding->data,
+    sizeof(float), model->embedding->position_embedding->size, f
+  );
 
   for (int i = 0; i < config.num_layers; i++) {
     TransformerBlock* layer = model->layers[i];
 
-    check_fread(layer->ln1->gamma->data, sizeof(float), layer->ln1->gamma->size, f);
-    check_fread(layer->ln1->beta->data, sizeof(float), layer->ln1->beta->size, f);
+    check_fread(
+      layer->ln1->gamma->data, sizeof(float), layer->ln1->gamma->size, f
+    );
+    check_fread(
+      layer->ln1->beta->data, sizeof(float), layer->ln1->beta->size, f
+    );
 
-    check_fread(layer->attn->W_q->data, sizeof(float), layer->attn->W_q->size, f);
-    check_fread(layer->attn->W_k->data, sizeof(float), layer->attn->W_k->size, f);
-    check_fread(layer->attn->W_v->data, sizeof(float), layer->attn->W_v->size, f);
-    check_fread(layer->attn->W_o->data, sizeof(float), layer->attn->W_o->size, f);
+    check_fread(
+      layer->attn->W_q->data, sizeof(float), layer->attn->W_q->size, f
+    );
+    check_fread(
+      layer->attn->W_k->data, sizeof(float), layer->attn->W_k->size, f
+    );
+    check_fread(
+      layer->attn->W_v->data, sizeof(float), layer->attn->W_v->size, f
+    );
+    check_fread(
+      layer->attn->W_o->data, sizeof(float), layer->attn->W_o->size, f
+    );
 
-    check_fread(layer->ln2->gamma->data, sizeof(float), layer->ln2->gamma->size, f);
-    check_fread(layer->ln2->beta->data, sizeof(float), layer->ln2->beta->size, f);
+    check_fread(
+      layer->ln2->gamma->data, sizeof(float), layer->ln2->gamma->size, f
+    );
+    check_fread(
+      layer->ln2->beta->data, sizeof(float), layer->ln2->beta->size, f
+    );
 
-    check_fread(layer->ffn->W1->data, sizeof(float), layer->ffn->W1->size, f);
-    check_fread(layer->ffn->b1->data, sizeof(float), layer->ffn->b1->size, f);
-    check_fread(layer->ffn->W2->data, sizeof(float), layer->ffn->W2->size, f);
-    check_fread(layer->ffn->b2->data, sizeof(float), layer->ffn->b2->size, f);
+    check_fread(
+      layer->ffn->W1->data, sizeof(float), layer->ffn->W1->size, f
+    );
+    check_fread(
+      layer->ffn->b1->data, sizeof(float), layer->ffn->b1->size, f
+    );
+    check_fread(
+      layer->ffn->W2->data, sizeof(float), layer->ffn->W2->size, f
+    );
+    check_fread(
+      layer->ffn->b2->data, sizeof(float), layer->ffn->b2->size, f
+    );
   }
 
-  check_fread(model->final_ln->gamma->data, sizeof(float), model->final_ln->gamma->size, f);
-  check_fread(model->final_ln->beta->data, sizeof(float), model->final_ln->beta->size, f);
+  check_fread(
+    model->final_ln->gamma->data, sizeof(float),
+    model->final_ln->gamma->size, f
+  );
+  check_fread(
+    model->final_ln->beta->data, sizeof(float),
+    model->final_ln->beta->size, f
+  );
 
-  check_fread(model->lm_head->data, sizeof(float), model->lm_head->size, f);
+  check_fread(
+    model->lm_head->data, sizeof(float), model->lm_head->size, f
+  );
 
   fclose(f);
   #undef check_fread
@@ -479,7 +557,7 @@ void model_print_info(GPTModel* model) {
   printf("    total: %d params\n", layer_params * model->config.num_layers);
 
   printf("  Final LayerNorm: %d params\n", layernorm_num_params(model->final_ln));
-  printf("  LM Head: %d × %d = %d params\n",
+  printf("  LM Head: %d x %d = %d params\n",
        model->config.hidden_dim, model->config.vocab_size,
        model->lm_head->size);
 

@@ -32,7 +32,9 @@ MultiHeadAttention* attention_create(int hidden_dim, int num_heads);
 
 void attention_free(MultiHeadAttention* attn);
 
-AttentionCache* attention_cache_create(int seq_len, int hidden_dim, int num_heads);
+AttentionCache* attention_cache_create(
+  int seq_len, int hidden_dim, int num_heads
+);
 
 void attention_cache_free(AttentionCache* cache);
 

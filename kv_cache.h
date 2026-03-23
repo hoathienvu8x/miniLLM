@@ -20,11 +20,15 @@ KVCache* kv_cache_create(int num_layers, int max_seq_len, int hidden_dim);
 
 void kv_cache_free(KVCache* cache);
 
-int kv_cache_update(KVCache* cache, int layer_idx,
-          Tensor* new_k, Tensor* new_v, int num_new_tokens);
+int kv_cache_update(
+  KVCache* cache, int layer_idx,
+  Tensor* new_k, Tensor* new_v, int num_new_tokens
+);
 
-void kv_cache_update_pos(KVCache* cache, int layer_idx, int pos,
-             float* k_data, float* v_data);
+void kv_cache_update_pos(
+  KVCache* cache, int layer_idx, int pos,
+  float* k_data, float* v_data
+);
 
 Tensor* kv_cache_get_k(KVCache* cache, int layer_idx);
 

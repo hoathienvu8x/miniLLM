@@ -172,14 +172,14 @@ static int* merge_pair(int* tokens, int len, int first, int second,
 int bpe_train(BPETokenizer* tok, const char* text, int num_merges) {
   if (tok == NULL || text == NULL || num_merges <= 0) return -1;
 
-  printf("BPE 训练开始...\n");
-  printf("  初始词汇表大小: %d\n", tok->vocab_size);
+  printf("BPE Training in progress...\n");
+  printf("  Initial vocabulary size: %d\n", tok->vocab_size);
 
   int len;
   int* tokens = text_to_initial_tokens(tok, text, &len);
 
-  printf("  文本长度: %d 字符\n", (int)strlen(text));
-  printf("  初始 tokens: %d\n", len);
+  printf("  Text length: %d characters\n", (int)strlen(text));
+  printf("  Initial tokens: %d\n", len);
 
   for (int i = 0; i < num_merges; i++) {
 
@@ -192,13 +192,13 @@ int bpe_train(BPETokenizer* tok, const char* text, int num_merges) {
     free(pairs);
 
     if (count < 2) {
-      printf("  在第 %d 次合并后停止 (无更多可合并的 pair)\n", i);
+      printf("  Stopping after %d merges (no more pairs to merge)\n", i);
       break;
     }
 
     int new_id = tok->vocab_size;
     if (new_id >= BPE_MAX_VOCAB_SIZE) {
-      printf("  达到最大词汇表大小\n");
+      printf("  Vocabulary size limit exceeded\n");
       break;
     }
 
@@ -224,16 +224,16 @@ int bpe_train(BPETokenizer* tok, const char* text, int num_merges) {
     len = merged_len;
 
     if ((i + 1) % 100 == 0) {
-      printf("  合并 %d: '%s' + '%s' -> '%s' (出现 %d 次, tokens: %d)\n",
+      printf("  Merge %d: '%s' + '%s' -> '%s' (%d occurrences, %d tokens)\n",
            i + 1, s1, s2, new_token, count, len);
     }
   }
 
   free(tokens);
 
-  printf("BPE 训练完成!\n");
-  printf("  最终词汇表大小: %d\n", tok->vocab_size);
-  printf("  合并规则数量: %d\n", tok->num_merges);
+  printf("BPE Training finished!\n");
+  printf("  Final vocabulary size %d\n", tok->vocab_size);
+  printf("  Merge rule count: %d\n", tok->num_merges);
 
   return 0;
 }
@@ -452,22 +452,22 @@ void bpe_print_stats(BPETokenizer* tok) {
     return;
   }
 
-  printf("BPE Tokenizer 统计:\n");
-  printf("  词汇表大小: %d\n", tok->vocab_size);
-  printf("  合并规则数: %d\n", tok->num_merges);
-  printf("  特殊 tokens:\n");
+  printf("BPE Tokenizer Summary:\n");
+  printf("  Vocab size: %d\n", tok->vocab_size);
+  printf("  Number of merges: %d\n", tok->num_merges);
+  printf("  Special tokens:\n");
   printf("    <pad>: %d\n", tok->pad_id);
   printf("    <unk>: %d\n", tok->unk_id);
   printf("    <bos>: %d\n", tok->bos_id);
   printf("    <eos>: %d\n", tok->eos_id);
 
-  printf("  前 20 个 tokens:\n");
+  printf("  Top 20 tokens:\n");
   for (int i = 0; i < 20 && i < tok->vocab_size; i++) {
     printf("    %d: '%s'\n", i, tok->vocab[i]);
   }
 
   if (tok->num_merges > 0) {
-    printf("  最后 10 个合并的 tokens:\n");
+    printf("  Last 10 merges tokens:\n");
     int start = tok->vocab_size - 10;
     if (start < 0) start = 4;
     for (int i = start; i < tok->vocab_size; i++) {

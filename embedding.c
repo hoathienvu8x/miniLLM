@@ -95,10 +95,15 @@ void embedding_init_learned_position(Embedding* emb, float std) {
   }
 }
 
-void embedding_forward(Embedding* emb, int* token_ids, int seq_len, Tensor* output) {
+void embedding_forward(
+  Embedding* emb, int* token_ids, int seq_len, Tensor* output
+) {
   if (emb == NULL || token_ids == NULL || output == NULL) return;
   if (seq_len > emb->max_seq_len) {
-    fprintf(stderr, "Error: seq_len (%d) > max_seq_len (%d)\n", seq_len, emb->max_seq_len);
+    fprintf(
+      stderr, "Error: seq_len (%d) > max_seq_len (%d)\n",
+      seq_len, emb->max_seq_len
+    );
     return;
   }
 
@@ -123,7 +128,9 @@ void embedding_forward(Embedding* emb, int* token_ids, int seq_len, Tensor* outp
   }
 }
 
-void embedding_get_token(Embedding* emb, int* token_ids, int seq_len, Tensor* output) {
+void embedding_get_token(
+  Embedding* emb, int* token_ids, int seq_len, Tensor* output
+) {
   if (emb == NULL || token_ids == NULL || output == NULL) return;
 
   int hidden_dim = emb->hidden_dim;

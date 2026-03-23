@@ -29,11 +29,15 @@ typedef struct {
   int hidden_dim;
 } TransformerCache;
 
-TransformerBlock* transformer_block_create(int hidden_dim, int num_heads, int ffn_dim);
+TransformerBlock* transformer_block_create(
+  int hidden_dim, int num_heads, int ffn_dim
+);
 
 void transformer_block_free(TransformerBlock* block);
 
-TransformerCache* transformer_cache_create(int seq_len, int hidden_dim, int num_heads, int ffn_dim);
+TransformerCache* transformer_cache_create(
+  int seq_len, int hidden_dim, int num_heads, int ffn_dim
+);
 
 void transformer_cache_free(TransformerCache* cache);
 

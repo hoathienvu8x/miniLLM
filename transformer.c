@@ -4,14 +4,17 @@
 #include <stdlib.h>
 #include <string.h>
 
-TransformerBlock* transformer_block_create(int hidden_dim, int num_heads, int ffn_dim) {
+TransformerBlock* transformer_block_create(
+  int hidden_dim, int num_heads, int ffn_dim
+) {
   if (hidden_dim <= 0 || num_heads <= 0 || ffn_dim <= 0) return NULL;
   if (hidden_dim % num_heads != 0) {
     fprintf(stderr, "Error: hidden_dim must be divisible by num_heads\n");
     return NULL;
   }
 
-  TransformerBlock* block = (TransformerBlock*)malloc(sizeof(TransformerBlock));
+  TransformerBlock* block =
+    (TransformerBlock*)malloc(sizeof(TransformerBlock));
   if (block == NULL) return NULL;
 
   block->hidden_dim = hidden_dim;
@@ -42,8 +45,11 @@ void transformer_block_free(TransformerBlock* block) {
   free(block);
 }
 
-TransformerCache* transformer_cache_create(int seq_len, int hidden_dim, int num_heads, int ffn_dim) {
-  TransformerCache* cache = (TransformerCache*)malloc(sizeof(TransformerCache));
+TransformerCache* transformer_cache_create(
+  int seq_len, int hidden_dim, int num_heads, int ffn_dim
+) {
+  TransformerCache* cache =
+    (TransformerCache*)malloc(sizeof(TransformerCache));
   if (cache == NULL) return NULL;
 
   cache->seq_len = seq_len;
@@ -234,8 +240,10 @@ void transformer_block_forward_prefill(
 
   layernorm_forward(block->ln1, input, cache->ln1_out);
 
-  attention_prefill_kv_cache(block->attn, cache->ln1_out, kv_cache, layer_idx,
-                 mask, cache->attn_cache, cache->attn_out);
+  attention_prefill_kv_cache(
+    block->attn, cache->ln1_out, kv_cache, layer_idx,
+    mask, cache->attn_cache, cache->attn_out
+  );
 
   for (int i = 0; i < input->size; i++) {
     output->data[i] = input->data[i] + cache->attn_out->data[i];
@@ -277,8 +285,10 @@ void transformer_block_forward_decode(
 
   layernorm_forward(block->ln1, input, ln1_out);
 
-  attention_forward_kv_cache(block->attn, ln1_out, kv_cache, layer_idx,
-                 pos, cache->attn_cache, attn_out);
+  attention_forward_kv_cache(
+    block->attn, ln1_out, kv_cache, layer_idx,
+    pos, cache->attn_cache, attn_out
+  );
 
   for (int i = 0; i < input->size; i++) {
     output->data[i] = input->data[i] + attn_out->data[i];
