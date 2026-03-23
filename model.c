@@ -329,19 +329,26 @@ int model_save(GPTModel* model, const char* path) {
         return -1;
     }
 
+    #define check_fwrite(ptr, size, nmemb, stream) \
+        if (fwrite(ptr, size, nmemb, stream) < (size_t)(nmemb)) { \
+            perror("fwrite()"); \
+            fclose(f); \
+            goto fail; \
+        }
+
     // 写入魔数和版本
     int magic = MODEL_MAGIC;
     int version = MODEL_VERSION;
-    fwrite(&magic, sizeof(int), 1, f);
-    fwrite(&version, sizeof(int), 1, f);
+    check_fwrite(&magic, sizeof(int), 1, f);
+    check_fwrite(&version, sizeof(int), 1, f);
 
     // 写入配置
-    fwrite(&model->config, sizeof(ModelConfig), 1, f);
+    check_fwrite(&model->config, sizeof(ModelConfig), 1, f);
 
     // 写入 Embedding
-    fwrite(model->embedding->token_embedding->data,
+    check_fwrite(model->embedding->token_embedding->data,
            sizeof(float), model->embedding->token_embedding->size, f);
-    fwrite(model->embedding->position_embedding->data,
+    check_fwrite(model->embedding->position_embedding->data,
            sizeof(float), model->embedding->position_embedding->size, f);
 
     // 写入每层 Transformer
@@ -349,38 +356,44 @@ int model_save(GPTModel* model, const char* path) {
         TransformerBlock* layer = model->layers[i];
 
         // LayerNorm1
-        fwrite(layer->ln1->gamma->data, sizeof(float), layer->ln1->gamma->size, f);
-        fwrite(layer->ln1->beta->data, sizeof(float), layer->ln1->beta->size, f);
+        check_fwrite(layer->ln1->gamma->data, sizeof(float), layer->ln1->gamma->size, f);
+        check_fwrite(layer->ln1->beta->data, sizeof(float), layer->ln1->beta->size, f);
 
         // Attention
-        fwrite(layer->attn->W_q->data, sizeof(float), layer->attn->W_q->size, f);
-        fwrite(layer->attn->W_k->data, sizeof(float), layer->attn->W_k->size, f);
-        fwrite(layer->attn->W_v->data, sizeof(float), layer->attn->W_v->size, f);
-        fwrite(layer->attn->W_o->data, sizeof(float), layer->attn->W_o->size, f);
+        check_fwrite(layer->attn->W_q->data, sizeof(float), layer->attn->W_q->size, f);
+        check_fwrite(layer->attn->W_k->data, sizeof(float), layer->attn->W_k->size, f);
+        check_fwrite(layer->attn->W_v->data, sizeof(float), layer->attn->W_v->size, f);
+        check_fwrite(layer->attn->W_o->data, sizeof(float), layer->attn->W_o->size, f);
 
         // LayerNorm2
-        fwrite(layer->ln2->gamma->data, sizeof(float), layer->ln2->gamma->size, f);
-        fwrite(layer->ln2->beta->data, sizeof(float), layer->ln2->beta->size, f);
+        check_fwrite(layer->ln2->gamma->data, sizeof(float), layer->ln2->gamma->size, f);
+        check_fwrite(layer->ln2->beta->data, sizeof(float), layer->ln2->beta->size, f);
 
         // FFN
-        fwrite(layer->ffn->W1->data, sizeof(float), layer->ffn->W1->size, f);
-        fwrite(layer->ffn->b1->data, sizeof(float), layer->ffn->b1->size, f);
-        fwrite(layer->ffn->W2->data, sizeof(float), layer->ffn->W2->size, f);
-        fwrite(layer->ffn->b2->data, sizeof(float), layer->ffn->b2->size, f);
+        check_fwrite(layer->ffn->W1->data, sizeof(float), layer->ffn->W1->size, f);
+        check_fwrite(layer->ffn->b1->data, sizeof(float), layer->ffn->b1->size, f);
+        check_fwrite(layer->ffn->W2->data, sizeof(float), layer->ffn->W2->size, f);
+        check_fwrite(layer->ffn->b2->data, sizeof(float), layer->ffn->b2->size, f);
     }
 
     // 写入最终 LayerNorm
-    fwrite(model->final_ln->gamma->data, sizeof(float), model->final_ln->gamma->size, f);
-    fwrite(model->final_ln->beta->data, sizeof(float), model->final_ln->beta->size, f);
+    check_fwrite(model->final_ln->gamma->data, sizeof(float), model->final_ln->gamma->size, f);
+    check_fwrite(model->final_ln->beta->data, sizeof(float), model->final_ln->beta->size, f);
 
     // 写入 LM Head
-    fwrite(model->lm_head->data, sizeof(float), model->lm_head->size, f);
+    check_fwrite(model->lm_head->data, sizeof(float), model->lm_head->size, f);
 
     fclose(f);
+    #undef check_fwrite
     return 0;
+fail:
+    #undef check_fwrite
+    return -1;
 }
 
 GPTModel* model_load(const char* path) {
+    ModelConfig config;
+    GPTModel* model = NULL;
     if (path == NULL) return NULL;
 
     FILE* f = fopen(path, "rb");
@@ -389,10 +402,17 @@ GPTModel* model_load(const char* path) {
         return NULL;
     }
 
+    #define check_fread(ptr, size, nmemb, stream) \
+        if (fread(ptr, size, nmemb, stream) < (size_t)(nmemb)) { \
+            perror("fread()"); \
+            fclose(f); \
+            goto fail; \
+        }
+
     // 验证魔数和版本
     int magic, version;
-    fread(&magic, sizeof(int), 1, f);
-    fread(&version, sizeof(int), 1, f);
+    check_fread(&magic, sizeof(int), 1, f);
+    check_fread(&version, sizeof(int), 1, f);
 
     if (magic != MODEL_MAGIC) {
         fprintf(stderr, "Error: invalid model file (bad magic number)\n");
@@ -407,20 +427,19 @@ GPTModel* model_load(const char* path) {
     }
 
     // 读取配置
-    ModelConfig config;
-    fread(&config, sizeof(ModelConfig), 1, f);
+    check_fread(&config, sizeof(ModelConfig), 1, f);
 
     // 创建模型
-    GPTModel* model = model_create(config);
+    model = model_create(config);
     if (model == NULL) {
         fclose(f);
         return NULL;
     }
 
     // 读取 Embedding
-    fread(model->embedding->token_embedding->data,
+    check_fread(model->embedding->token_embedding->data,
           sizeof(float), model->embedding->token_embedding->size, f);
-    fread(model->embedding->position_embedding->data,
+    check_fread(model->embedding->position_embedding->data,
           sizeof(float), model->embedding->position_embedding->size, f);
 
     // 读取每层 Transformer
@@ -428,35 +447,40 @@ GPTModel* model_load(const char* path) {
         TransformerBlock* layer = model->layers[i];
 
         // LayerNorm1
-        fread(layer->ln1->gamma->data, sizeof(float), layer->ln1->gamma->size, f);
-        fread(layer->ln1->beta->data, sizeof(float), layer->ln1->beta->size, f);
+        check_fread(layer->ln1->gamma->data, sizeof(float), layer->ln1->gamma->size, f);
+        check_fread(layer->ln1->beta->data, sizeof(float), layer->ln1->beta->size, f);
 
         // Attention
-        fread(layer->attn->W_q->data, sizeof(float), layer->attn->W_q->size, f);
-        fread(layer->attn->W_k->data, sizeof(float), layer->attn->W_k->size, f);
-        fread(layer->attn->W_v->data, sizeof(float), layer->attn->W_v->size, f);
-        fread(layer->attn->W_o->data, sizeof(float), layer->attn->W_o->size, f);
+        check_fread(layer->attn->W_q->data, sizeof(float), layer->attn->W_q->size, f);
+        check_fread(layer->attn->W_k->data, sizeof(float), layer->attn->W_k->size, f);
+        check_fread(layer->attn->W_v->data, sizeof(float), layer->attn->W_v->size, f);
+        check_fread(layer->attn->W_o->data, sizeof(float), layer->attn->W_o->size, f);
 
         // LayerNorm2
-        fread(layer->ln2->gamma->data, sizeof(float), layer->ln2->gamma->size, f);
-        fread(layer->ln2->beta->data, sizeof(float), layer->ln2->beta->size, f);
+        check_fread(layer->ln2->gamma->data, sizeof(float), layer->ln2->gamma->size, f);
+        check_fread(layer->ln2->beta->data, sizeof(float), layer->ln2->beta->size, f);
 
         // FFN
-        fread(layer->ffn->W1->data, sizeof(float), layer->ffn->W1->size, f);
-        fread(layer->ffn->b1->data, sizeof(float), layer->ffn->b1->size, f);
-        fread(layer->ffn->W2->data, sizeof(float), layer->ffn->W2->size, f);
-        fread(layer->ffn->b2->data, sizeof(float), layer->ffn->b2->size, f);
+        check_fread(layer->ffn->W1->data, sizeof(float), layer->ffn->W1->size, f);
+        check_fread(layer->ffn->b1->data, sizeof(float), layer->ffn->b1->size, f);
+        check_fread(layer->ffn->W2->data, sizeof(float), layer->ffn->W2->size, f);
+        check_fread(layer->ffn->b2->data, sizeof(float), layer->ffn->b2->size, f);
     }
 
     // 读取最终 LayerNorm
-    fread(model->final_ln->gamma->data, sizeof(float), model->final_ln->gamma->size, f);
-    fread(model->final_ln->beta->data, sizeof(float), model->final_ln->beta->size, f);
+    check_fread(model->final_ln->gamma->data, sizeof(float), model->final_ln->gamma->size, f);
+    check_fread(model->final_ln->beta->data, sizeof(float), model->final_ln->beta->size, f);
 
     // 读取 LM Head
-    fread(model->lm_head->data, sizeof(float), model->lm_head->size, f);
+    check_fread(model->lm_head->data, sizeof(float), model->lm_head->size, f);
 
     fclose(f);
+    #undef check_fread
     return model;
+fail:
+    #undef check_fread
+    if (model) model_free(model);
+    return NULL;
 }
 
 int model_num_params(GPTModel* model) {

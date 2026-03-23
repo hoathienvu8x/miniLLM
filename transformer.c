@@ -244,7 +244,7 @@ void transformer_block_forward_prefill(
         cache == NULL || output == NULL) return;
 
     int seq_len = input->shape[0];
-    int hidden_dim = block->hidden_dim;
+    // int hidden_dim = block->hidden_dim;
 
     // 检查并调整缓存大小
     if (cache->seq_len != seq_len) {
