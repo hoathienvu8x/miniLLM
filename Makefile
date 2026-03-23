@@ -15,7 +15,10 @@ OBJECTS = \
 
 OBJECTS := $(addprefix objects/,$(OBJECTS))
 
-all: objects $(OBJECTS)
+TRAIN_OBJECTS = loss.o backward.o optimizer.o
+TRAIN_OBJECTS := $(addprefix objects/,$(TRAIN_OBJECTS))
+
+all: objects $(OBJECTS) $(TRAIN_OBJECTS)
 
 objects:
 	@echo "Create 'objects' folder ..."
