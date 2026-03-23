@@ -20,9 +20,35 @@ TRAIN_OBJECTS := $(addprefix objects/,$(TRAIN_OBJECTS))
 
 all: objects $(OBJECTS) $(TRAIN_OBJECTS)
 
+chat: objects/chat.o $(OBJECTS) $(TRAIN_OBJECTS)
+ifeq ($(build),release)
+	@echo "Build release '$@' executable ..."
+else
+	@echo "Build '$@' executable ..."
+endif
+	@$(CC) objects/chat.o $(OBJECTS) $(TRAIN_OBJECTS) -o $@ $(LDFLAGS) -DLLM_CHAT=1
+	@$(RM) objects/chat.o
+
+llm: objects/llm.o $(OBJECTS) $(TRAIN_OBJECTS)
+ifeq ($(build),release)
+	@echo "Build release '$@' executable ..."
+else
+	@echo "Build '$@' executable ..."
+endif
+	@$(CC) objects/llm.o $(OBJECTS) $(TRAIN_OBJECTS) -o $@ $(LDFLAGS)
+	@$(RM) objects/llm.o
+
 objects:
 	@echo "Create 'objects' folder ..."
 	@mkdir -p objects
+
+objects/chat.o: llm.c
+ifeq ($(build),release)
+	@echo "Build release '$@' object ..."
+else
+	@echo "Build '$@' object ..."
+endif
+	@$(CC) -c $(CFLAGS) $< -o $@ $(LDFLAGS) -DLLM_CHAT=1
 
 objects/%.o: %.c
 ifeq ($(build),release)
@@ -34,4 +60,4 @@ endif
 
 clean:
 	@echo "Cleanup ..."
-	@$(RM) $(OBJECTS)
+	@$(RM) $(OBJECTS) $(TRAIN_OBJECTS) chat llm
